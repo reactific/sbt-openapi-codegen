@@ -1,0 +1,74 @@
+openapi: '2.0.0'
+info :
+  description: 'This should describe an API'
+  version: '2.0.0'
+  title: 'Test API'
+  termsOfService: 'http://reactific.com/no-this-isnt-valid/'
+  contact:
+    name: 'Example.com'
+    url: 'https://example.com'
+    email: 'sbttest@example.com'
+  license:
+    name: Proprietary
+    url: 'http://example.com/contact-us/'
+servers:
+  - url: "https://dev.example.com/v2"
+    description: "Development Server"
+  - url: "https://staging.example.com/v2"
+    description: "Staging Server"
+  - url: "https://{tenant}.{provider}:${port}/{version}"
+    description: "Production Server"
+    variables:
+      provider:
+        default: "example.com"
+        description: "The service provider of the Test API"
+      tenant:
+        default: demo
+        description: Service provider name for the tenant (group, organization, company) being addressed by the API.
+      port:
+        enum:
+          - '8443'
+          - '443'
+          - '80'
+        default: '443'
+      version:
+        enum:
+          - 'v2'
+        default: v2
+paths:
+  /test/path:
+    summary: 'Test Path'
+    description: 'This tests an API'
+    post:
+      description: "Takes the test"
+      responses:
+        200:
+          $ref: '#/components/responses/apiResp'
+    get:
+      description: "Gets the test"
+      responses:
+        200:
+          $ref: '#/components/responses/apiResp'
+
+
+components:
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: robothive_api_key
+      in: header
+      description: "API Key for Application"
+    basic:
+      type: http
+      scheme: basic
+      description: "Basic HTTP Authentication"
+
+  responses:
+    apiResp:
+      description: Standard API Response for successful
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/VeryComplexType'

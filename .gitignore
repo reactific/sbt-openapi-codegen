@@ -1,2 +1,11 @@
+*.class
+*.log
+
+target
+**/target
+/project/project
+.cache
+.classpath
+.project
+.settings
 .idea
-/target/

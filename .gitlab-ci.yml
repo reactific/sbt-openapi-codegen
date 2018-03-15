@@ -1,0 +1,30 @@
+image: $NEXUS_URL:$NEXUS_DOCKER_PULL_PORT/scala
+
+stages:
+- test
+- publish
+
+sbt_test:
+  stage: test
+  tags:
+    - docker
+  script:
+    - sbt clean scripted test
+  cache:
+    key: "$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME"
+    paths:
+      - .ivy2/
+      - .sbt/
+
+sbt_publish:
+  stage: publish
+  tags:
+    - docker
+
+  script:
+    - sbt clean publishLocal
+  cache:
+    key: "$CI_PROJECT_NAMESPACE-$CI_PROJECT_NAME"
+    paths:
+      - .ivy2/
+      - .sbt/
