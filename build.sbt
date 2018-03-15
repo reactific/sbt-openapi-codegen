@@ -27,5 +27,3 @@ libraryDependencies ++= Seq(
 // set up 'scripted; sbt plugin for testing sbt plugins
 scriptedLaunchOpts ++= Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
 scriptedBufferLog := false
-
-addSbtPlugin("com.reactific" %% "sbt-reactific" % "3.0.5")

@@ -17,8 +17,6 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
   
-  override def requires: Plugins = super.requires && ReactificPlugin
-  
   object autoImport {
 
     val scalaLagomServerCodeGen: TaskKey[Seq[File]] = TaskKey[Seq[File]](
