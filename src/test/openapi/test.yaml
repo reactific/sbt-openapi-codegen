@@ -1,0 +1,53 @@
+swagger: "2.0"
+info:
+  version: "2.0"
+  title: 'Yoppworks RobotHive API'
+  license:
+    name: Proprietary
+    url: 'http://yoppworks.com/contact-us/'
+host: petstore.swagger.io
+basePath: /v1
+schemes:
+  - http
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /robot/telemetry:
+    summary: 'Robot Telemetry'
+    description: 'Handles requests involving the telemetry data for a specific robot assemgly'
+    post:
+      description: "Upload telemetry data for a specific robot assembly"
+      operationId: RobotTelemetryPost
+      responses:
+        200:
+          $ref: '#/components/responses/apiResp'
+    get:
+      description: "Download telemetry data for a specific robot assembly"
+      operationId: RobotTelemetryGet
+      responses:
+        200:
+          $ref: '#/components/responses/apiResp'
+
+components:
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: robothive_api_key
+      in: header
+      description: "API Key for RobotHive"
+    basic:
+      type: http
+      scheme: basic
+      description: "Basic HTTP Authentication"
+
+  responses:
+    apiResp:
+      description: Standard API Response for successful
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/VeryComplexType'

@@ -15,7 +15,8 @@ scalaVersion := "2.12.4"
 logLevel := Level.Info
 
 libraryDependencies ++= Seq(
-  "io.swagger" % "swagger-codegen-cli" % "2.3.1"
+  "io.swagger" % "swagger-codegen-cli" % "2.3.1",
+  "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )
 
 

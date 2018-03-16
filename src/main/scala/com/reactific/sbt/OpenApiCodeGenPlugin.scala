@@ -11,7 +11,6 @@ import sbt._
 import sbt.Keys._
 import _root_.io.swagger.codegen.SwaggerCodegen
 import sbt.TaskKey
-import sbt.internal.util.ManagedLogger
 
 object OpenApiCodeGenPlugin extends AutoPlugin {
 
@@ -19,10 +18,13 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
   
   object autoImport {
 
-    val scalaLagomServerCodeGen: TaskKey[Seq[File]] = TaskKey[Seq[File]](
+    val runSwaggerCodegenTask: TaskKey[Seq[File]] = TaskKey[Seq[File]](
       "generate-scala-lagom", "Task to generate scala-lagom code"
     )
-
+  
+    val codegenType: SettingKey[String] = settingKey[String](
+      "The swagger-codegen-cli type of codegen per the -l option"
+    )
     val openApiSpec: SettingKey[File] = settingKey[File](
       "The path to the OpenAPI Specification File to compile"
     )
@@ -134,15 +136,18 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
   )
   
   override lazy val projectSettings = Seq(
-      sourceGenerators in Compile += (scalaLagomServerCodeGen in Compile),
-      scalaLagomServerCodeGen in Compile := {
+      sourceGenerators in Compile += (runSwaggerCodegenTask in Compile),
+      runSwaggerCodegenTask in Compile := {
         runSwaggerCodegen(
+          codegenType.value,
           openApiSpec.value,
           (sbt.Keys.managedSourceDirectories in Compile).value.head,
           outputDirectory.value,
-          streams.value.log, verbose.value
+          apiPackage.value, modelPackage.value,
+          verbose.value, skipOverwite.value
         )
       },
+      codegenType := "scala-lagom-server",
       openApiSpec := file(""),
       verbose := true,
       skipOverwite := true,
@@ -150,8 +155,9 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
       apiPackage := "your.package.name.api",
       modelPackage := "your.package.name.model",
       modelNamePrefix := "",
-      modelNameSuffix := ""
-    )
+      modelNameSuffix := "",
+      libraryDependencies += "io.swagger" % "swagger-codegen" % "2.3.1"
+  )
 
   def listOutputFiles(f: File, r: Regex): Array[File] = {
     val these = f.listFiles
@@ -160,11 +166,14 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
   }
 
   def runSwaggerCodegen(
+    language: String,
     sourceFile: File,
     generatedOutputBase: File,
     outputDirectory: Option[File],
-    log: ManagedLogger,
-    verbose: Boolean
+    apiPackage: String,
+    modelPackage: String,
+    verbose: Boolean,
+    skipOverwrite: Boolean
   ): Seq[File] = {
     val outputRoot: File = outputDirectory  match {
       case Some(dir) =>
@@ -180,12 +189,16 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
     val args: Seq[String] = {
       Seq(
         "generate",
-        "-t", "scala-lagom-server",
-        "-l", "scala-lagom-server",
+        // "-t", "scala-lagom-server",
+        "-l", language,
         "-i", sourceFile.getAbsolutePath,
-        "-o", outputRoot.getAbsolutePath
+        "-o", outputRoot.getAbsolutePath,
+        "--api-package", apiPackage,
+        "--model-package", modelPackage
       ) ++ {
-        if (verbose) { Seq("-v") } else { Seq()}
+        if (verbose) { Seq("-v") } else { Seq[String]() }
+      } ++ {
+        if (skipOverwrite) { Seq("--skip-overwrite") } else { Seq[String]() }
       }
     }
   
@@ -195,9 +208,10 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
       case Success(_) ⇒
         listOutputFiles(outputRoot,""".*\.scala""".r).toSeq
       case Failure(x) ⇒
-        val msg = x.getClass.getName + ": " + x.getLocalizedMessage
-        log.warn(s"SwaggerCodeGen failed: $msg")
-        Seq.empty[File]
+        throw new RuntimeException(
+          "SwaggerCodeGen failed: " +
+            x.getClass.getName + ": " + x.getLocalizedMessage
+        )
     }
   }
 

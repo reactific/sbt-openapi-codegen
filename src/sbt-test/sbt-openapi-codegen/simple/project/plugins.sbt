@@ -5,3 +5,4 @@
                                   |Specify this property using the scriptedLaunchOpts -D.""".stripMargin)
   else addSbtPlugin("com.reactific" % """sbt-openapi-codegen""" % pluginVersion)
 }
+addSbtPlugin("com.reactific" % "sbt-reactific" % "3.0.5")
