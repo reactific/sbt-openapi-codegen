@@ -1,10 +1,6 @@
-val `sbt-openapi-codegen` = project.in(file("."))
-.enablePlugins(
+enablePlugins(
   ReactificPlugin,
   ScriptedPlugin,
-)
-.configure(
-  // Config.everything
 )
 
 name := "sbt-openapi-codegen"
