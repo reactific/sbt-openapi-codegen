@@ -5,7 +5,7 @@ info:
   license:
     name: Proprietary
     url: 'http://yoppworks.com/contact-us/'
-host: petstore.swagger.io
+host: api.example.com
 basePath: /v1
 schemes:
   - http

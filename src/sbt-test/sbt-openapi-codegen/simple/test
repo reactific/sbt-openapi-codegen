@@ -1,4 +1,5 @@
+> printRuntimeClassPath
 > show openApiSpec
 > compile
 > package
-$ exists target/scala-2.12/simple-test_2.12-0.1.jar
+$ exists target/scala-2.11/swagger-scala-client_2.11-1.0.0.jar

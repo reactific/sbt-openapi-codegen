@@ -8,21 +8,23 @@ class OpenApiCodeGenPluginSpec extends WordSpec {
 
   "OpenApiCodeGenPlugin" when {
     "run" should {
-      "do something" in {
+      "return list of files produced" in {
         val files = OpenApiCodeGenPlugin.runSwaggerCodegen(
-          "scala-lagom-server",
-          new File("src/test/openapi/test.yaml"),
-          new File("target/test/openapicodegen"),
+          "akka-scala",
           None,
+          new File("src/test/openapi/test.yaml"),
+          new File("target/test/openapi"),
           "test.api",
           "test.model",
-          false,
-          true
+          "test.invoker",
+          generateWholeProject = false,
+          verbose = true,
+          skipOverwrite = false
         )
         assert(files.nonEmpty)
+        println("Source files")
         files.foreach{ f: File ⇒ println(f.getAbsolutePath)}
       }
     }
   }
-
 }
