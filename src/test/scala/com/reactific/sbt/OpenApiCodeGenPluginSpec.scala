@@ -3,12 +3,16 @@ package com.reactific.sbt
 import java.io.File
 
 import org.scalatest.WordSpec
+import sbt.internal.util.ManagedLogger
+import org.apache.logging.log4j.core.LoggerContext
 
 class OpenApiCodeGenPluginSpec extends WordSpec {
 
   "OpenApiCodeGenPlugin" when {
     "run" should {
       "return list of files produced" in {
+        val l4j = new LoggerContext("test").getLogger("test")
+        val log: ManagedLogger = new ManagedLogger("test", None, None, l4j)
         val files = OpenApiCodeGenPlugin.runSwaggerCodegen(
           "akka-scala",
           None,
@@ -19,7 +23,8 @@ class OpenApiCodeGenPluginSpec extends WordSpec {
           "test.invoker",
           generateWholeProject = false,
           verbose = true,
-          skipOverwrite = false
+          skipOverwrite = false,
+          log
         )
         assert(files.nonEmpty)
         println("Source files")

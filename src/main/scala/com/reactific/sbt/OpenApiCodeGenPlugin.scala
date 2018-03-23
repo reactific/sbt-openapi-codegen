@@ -27,6 +27,7 @@ import sbt._
 import sbt.Keys._
 import _root_.io.swagger.codegen.SwaggerCodegen
 import sbt.TaskKey
+import sbt.internal.util.ManagedLogger
 
 object OpenApiCodeGenPlugin extends AutoPlugin {
 
@@ -40,41 +41,53 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
         "added to the current build (false). The default is false."
     )
 
-    // -l
+    // -l <language>, --lang <language>
     val codegenType: SettingKey[String] = settingKey[String](
-      "The swagger-codegen-cli type of codegen per the -l option"
+      "The language to generate as either its simple name or the " +
+        "class name in the classpath (required)"
+    )
+  
+    // -c <configuration file>, --config <configuration file>
+    val codegenConfigFile: SettingKey[File] = settingKey[File](
+      """Path to json configuration file. File content should be in a json
+        | format {"optionKey":"optionValue", "optionKey1":"optionValue1" ...}
+        | Supported options can be different for each language. Run
+        | config-help -l {lang} command for language specific config options.
+        |""".stripMargin
     )
 
-    // -c
-    val codegenConfigFile: SettingKey[File] =
-      settingKey[File]("Path to the configuration file for the language")
+    // -i <spec file>, --input-spec <spec file>
+    val openApiSpec: SettingKey[File] = settingKey[File](
+      "location of the OpenAPI spec, as URL or file path (required)"
+    )
 
-    // -i
-    val openApiSpec: SettingKey[File] =
-      settingKey[File]("The path to the OpenAPI Specification File to compile")
-
-    // -t
+    // -t <template directory>, --template-dir <template directory>
     val templatesDir: SettingKey[Option[File]] = settingKey[Option[File]](
       "The path to the directory containing the moustache templates to use" +
         "for code generation. If 'None', use the defaults"
     )
 
-    // -o --output
+    // --library <library>
+    val library: SettingKey[String] = settingKey[String](
+      "library template (sub-template)"
+    )
+
+    // -o <output directory>, --output <output directory>
     val outputDir: SettingKey[Option[File]] = settingKey[Option[File]](
       "where to write the generated files (current dir by default)"
     )
 
-    // --api-package
+    // --api-package <api package>
     val apiPackage: SettingKey[String] =
       settingKey[String]("name of package for the api output")
 
-    // --model-package
+    // --model-package <model package>
     val modelPackage: SettingKey[String] =
       settingKey[String]("name of package for the model output")
-
-    // --invoker-package
+  
+    // --invoker-package <invoker package>
     val invokerPackage: SettingKey[String] =
-      settingKey[String]("name of package for the invoker output")
+      settingKey[String]("name of root package for generated code")
 
     // --model-name-prefix
     val modelNamePrefix: SettingKey[String] =
@@ -94,9 +107,106 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
       "specifies if the existing files should be " +
         "overwritten during the generation."
     )
+  
+    // --git-repo-id <git repo id>
+    val gitRepoId: SettingKey[String] = settingKey[String](
+      "Git repo ID, e.g. swagger-codegen."
+    )
+  
+    // --git-user-id <git user id>
+    val gitUserId: SettingKey[String] = settingKey[String](
+      "Git user ID, e.g. swagger-api."
+    )
 
+    // --group-id <group id>
+    val pomGroupId: SettingKey[String] = settingKey[String](
+      "groupId in generated pom.xml\n  "
+    )
+    
+    // --artifact-id <artifact id>
+    val pomArtifactId: SettingKey[String] = settingKey[String](
+      "artifactId in generated pom.xml"
+    )
+    
+    // --artifact-version <artifact version>
+    val pomArtifaceVersion: SettingKey[String] = settingKey[String](
+      "artifact version in generated pom.xml"
+    )
+  
+    // -a <authorization>, --auth <authorization>
+    val httpAuthorization: SettingKey[String] = settingKey[String](
+      """Adds authorization headers when fetching the swagger definitions
+        | remotely. Pass in a URL-encoded string of name:header with a
+        | comma separating multiple values
+        |""".stripMargin
+    )
+
+    // --http-user-agent <http user agent>
+    val httpUserAgent: SettingKey[String] = settingKey[String](
+      "HTTP user agent, e.g. codegen_csharp_api_client, default to" +
+      "'Swagger-Codegen/{packageVersion}}/{language}'"
+    )
+  
+    // --release-note <release note>
+    val releaseNotes: SettingKey[String] = settingKey[String](
+      "Release notes, defaults to 'Minor update'."
+    )
+  
+    // --remove-operation-id-prefix
+    val removeOperationIdPrefix: SettingKey[String] = settingKey[String](
+      "Remove prefix of operationId, e.g. config_getId => getId"
+    )
+  
+    /*
+
+--additional-properties <additional properties>
+  sets additional properties that can be referenced by the mustache
+  templates in the format of name=value,name=value. You can also have
+  multiple occurrences of this option.
+
+-D <system properties>
+  sets specified system properties in the format of
+  name=value,name=value (or multiple options, each with name=value)
+
+--ignore-file-override <ignore file override location>
+  Specifies an override location for the .swagger-codegen-ignore file.
+  Most useful on initial generation.
+
+--import-mappings <import mappings>
+  specifies mappings between a given class and the import that should
+  be used for that class in the format of type=import,type=import. You
+  can also have multiple occurrences of this option.
+
+--instantiation-types <instantiation types>
+  sets instantiation type mappings in the format of
+  type=instantiatedType,type=instantiatedType.For example (in Java):
+  array=ArrayList,map=HashMap. In other words array types will get
+  instantiated as ArrayList in generated code. You can also have
+  multiple occurrences of this option.
+
+--language-specific-primitives <language specific primitives>
+  specifies additional language specific primitive types in the format
+  of type1,type2,type3,type3. For example:
+  String,boolean,Boolean,Double. You can also have multiple
+  occurrences of this option.
+
+--reserved-words-mappings <reserved word mappings>
+  specifies how a reserved name should be escaped to. Otherwise, the
+  default _<name> is used. For example id=identifier. You can also
+  have multiple occurrences of this option.
+
+--type-mappings <type mappings>
+  sets mappings between swagger spec types and generated code types in
+  the format of swaggerType=generatedType,swaggerType=generatedType.
+  For example: array=List,map=Map,string=String. You can also have
+  multiple occurrences of this option.
+
+
+*/
+  
+  
     val runSwaggerCodegenTask: TaskKey[Seq[File]] = TaskKey[Seq[File]](
-      "run-swagger-codegen",
+     "run-swagger-codegen",
       "Task to generate code with swagger-codegen"
     )
 
@@ -147,7 +257,8 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
         invokerPackage.value,
         generateWholeProject.value,
         verbose.value,
-        skipOverwite.value
+        skipOverwite.value,
+        streams.value.log
       )
     }, collectSourceFilesTask in Compile := {
       (runSwaggerCodegenTask in Compile).value
@@ -297,7 +408,8 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
     invokerPackage: String,
     generateWholeProject: Boolean,
     verbose: Boolean,
-    skipOverwrite: Boolean
+    skipOverwrite: Boolean,
+    log: ManagedLogger
   ): Seq[File] = {
 
     val args: Seq[String] = {
@@ -338,7 +450,13 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
     }
 
     Try {
-      SwaggerCodegen.main(args.toArray[String])
+      val argsArray = args.toArray[String]
+      if (verbose) {
+        System.setProperty("debugParser", "on")
+      } else {
+        System.clearProperty("debugParser")
+      }
+      SwaggerCodegen.main(argsArray)
     } match {
       case Success(_) ⇒
         if (generateWholeProject) {
@@ -358,12 +476,11 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
               Seq.empty[File]
           }
         }
-      case Failure(x) ⇒
-        throw new RuntimeException(
-          "SwaggerCodeGen failed: " +
-            x.getClass.getName + ": " + x.getLocalizedMessage,
-          x
+      case Failure(xcptn) ⇒
+        log.error("SwaggerCodeGen failed: " +
+          xcptn.getClass.getName + ": " + xcptn.getLocalizedMessage
         )
+        throw xcptn
     }
   }
 }
