@@ -33,7 +33,7 @@ import sbt.plugins.JvmPlugin
 object OpenApiCodeGenPlugin extends AutoPlugin {
 
   override def trigger: PluginTrigger = allRequirements
-  override def requires = JvmPlugin
+  override def requires: Plugins = JvmPlugin
   
   object autoImport {
   
@@ -452,6 +452,7 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
       )
     )
 
+  // scalastyle:off
   def languageToClassName(lang: String): String = {
     import _root_.io.swagger.codegen.languages._
     lang match {
@@ -552,6 +553,7 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
       case _ ⇒ lang
     }
   }
+  // scalastyle:on
 
   def listOutputFiles(f: File, r: Regex): Array[File] = {
     Option(f.listFiles) match {
