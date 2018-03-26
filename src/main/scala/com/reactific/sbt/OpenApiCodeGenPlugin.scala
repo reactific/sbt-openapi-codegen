@@ -28,12 +28,177 @@ import sbt.Keys._
 import _root_.io.swagger.codegen.SwaggerCodegen
 import sbt.TaskKey
 import sbt.internal.util.ManagedLogger
+import sbt.plugins.JvmPlugin
 
 object OpenApiCodeGenPlugin extends AutoPlugin {
 
   override def trigger: PluginTrigger = allRequirements
-
+  override def requires = JvmPlugin
+  
   object autoImport {
+  
+    /**
+     * This is used to execute one run of the code gener
+     * @param codegenType The language to generate as either its simple
+     *                    name or the class name in the classpath (required)
+     * @param openApiSpec location of the OpenAPI spec, as URL or file
+     *                    path (required)
+     * @param outputDir where to write the generated files
+     *                  (.../target/codegen by default)
+     
+     * @param configFile Path to json configuration file. File content should
+     *                   be in a jso format {"optionKey":"optionValue",
+     *                   "optionKey1":"optionValue1" ...} Supported options can
+     *                   be different for each language. Run config-help -l
+     *                   {lang} command for language specific config options.
+     * @param templatesDir The path to the directory containing the moustache
+     *                     templates to use for code generation. If 'None',
+     *                     use the defaults
+     * @param library library template (sub-template)
+    // --api-package <api package>
+    val apiPackage: SettingKey[String] =
+      settingKey[String]("name of package for the api output")
+  
+    // --model-package <model package>
+    val modelPackage: SettingKey[String] =
+      settingKey[String]("name of package for the model output")
+  
+    // --invoker-package <invoker package>
+    val invokerPackage: SettingKey[String] =
+      settingKey[String]("name of root package for generated code")
+  
+    // --model-name-prefix
+    val modelNamePrefix: SettingKey[String] =
+      settingKey[String]("A prefix to prepend to each model name")
+  
+    // --model-name-suffix
+    val modelNameSuffix: SettingKey[String] =
+      settingKey[String]("A suffix to append to each model name")
+  
+    // -v --verbose
+    val verbose: SettingKey[Boolean] = settingKey[Boolean](
+      "Run the swagger-codegen-cli with verbose output option turned on"
+    )
+  
+    // -s --skip-overwrite
+    val skipOverwite: SettingKey[Boolean] = settingKey[Boolean](
+      "specifies if the existing files should be " +
+        "overwritten during the generation."
+    )
+  
+    // --git-repo-id <git repo id>
+    val gitRepoId: SettingKey[String] = settingKey[String](
+      "Git repo ID, e.g. swagger-codegen."
+    )
+  
+    // --git-user-id <git user id>
+    val gitUserId: SettingKey[String] = settingKey[String](
+      "Git user ID, e.g. swagger-api."
+    )
+  
+    // --group-id <group id>
+    val pomGroupId: SettingKey[String] = settingKey[String](
+      "groupId in generated pom.xml\n  "
+    )
+  
+    // --artifact-id <artifact id>
+    val pomArtifactId: SettingKey[String] = settingKey[String](
+      "artifactId in generated pom.xml"
+    )
+  
+    // --artifact-version <artifact version>
+    val pomArtifaceVersion: SettingKey[String] = settingKey[String](
+      "artifact version in generated pom.xml"
+    )
+  
+    // -a <authorization>, --auth <authorization>
+    val httpAuthorization: SettingKey[String] = settingKey[String](
+      """Adds authorization headers when fetching the swagger definitions
+        | remotely. Pass in a URL-encoded string of name:header with a
+        | comma separating multiple values
+        |""".stripMargin
+    )
+  
+    // --http-user-agent <http user agent>
+    val httpUserAgent: SettingKey[String] = settingKey[String](
+      "HTTP user agent, e.g. codegen_csharp_api_client, default to" +
+        "'Swagger-Codegen/{packageVersion}}/{language}'"
+    )
+  
+    // --release-note <release note>
+    val releaseNotes: SettingKey[String] = settingKey[String](
+      "Release notes, defaults to 'Minor update'."
+    )
+  
+    // --remove-operation-id-prefix
+    val removeOperationIdPrefix: SettingKey[String] = settingKey[String](
+      "Remove prefix of operationId, e.g. config_getId => getId"
+    )     */
+    case class CodeGenExecConfig(
+      // -l <language>, --lang <language>
+      codegenType: String,
+      // -c <configuration file>, --config <configuration file>
+      openApiSpec: File,
+      // -o <output directory>, --output <output directory>
+      outputDir: Option[File],
+      
+      // -i <spec file>, --input-spec <spec file>
+      configFile: Option[File] = None,
+      
+      // -t <template directory>, --template-dir <template directory>
+      templatesDir: Option[File] = None,
+  
+      // --library <library>
+      library: String = "",
+      
+      // --api-package <api package>
+      apiPackage: String = "",
+    
+      // --model-package <model package>
+      modelPackage: String = "",
+    
+      // --invoker-package <invoker package>
+      invokerPackage: String = "",
+    
+      // --model-name-prefix
+      modelNamePrefix: String = "",
+    
+      // --model-name-suffix
+      modelNameSuffix: String = "",
+    
+      // -v --verbose
+      verbose: Boolean = false,
+    
+      // -s --skip-overwrite
+      skipOverwite: Boolean = false,
+    
+      // --git-repo-id <git repo id>
+      gitRepoId: String = "",
+    
+      // --git-user-id <git user id>
+      gitUserId: String = "",
+    
+      // --group-id <group id>
+      pomGroupId: String = "",
+    
+      // --artifact-id <artifact id>
+      pomArtifactId: String = "",
+    
+      // --artifact-version <artifact version>
+      pomArtifactVersion: String = "",
+    
+      // -a <authorization>, --auth <authorization>
+      httpAuthorization: String = "",
+    
+      // --http-user-agent <http user agent>
+      httpUserAgent: String = "",
+    
+      // --release-note <release note>
+      releaseNotes: String = "Minor update",
+    
+      // --remove-operation-id-prefix
+      removeOperationIdPrefix: String = ""
+    )
 
     val generateWholeProject: SettingKey[Boolean] = settingKey[Boolean](
       "Controls whether an entire separate project (true) is generated for" +
@@ -238,8 +403,8 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
     startYear := Some(firstPublishedYear)
   )
 
-  override lazy val projectSettings =
-    Seq(runSwaggerCodegenTask in Compile := {
+  override lazy val projectSettings = Seq(
+    runSwaggerCodegenTask in Compile := {
       val outputRoot: File = outputDir.value match {
         case Some(dir) =>
           dir
@@ -398,7 +563,7 @@ object OpenApiCodeGenPlugin extends AutoPlugin {
     }
   }
 
-  def runSwaggerCodegen(
+def runSwaggerCodegen(
     langToUse: String,
     templatesDir: Option[File],
     sourceFile: File,
